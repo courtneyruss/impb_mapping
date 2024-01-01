@@ -3,7 +3,6 @@ library(shiny)
 library(sf)
 library(httr)
 library(leaflet)
-library(DT)  # Add DataTables library for data tables
 library(keyring)
 
 # Set access key for positionstack API
@@ -50,15 +49,11 @@ ui <- fluidPage(
           "</div><br>",
           license_text
         ))
-      ),
-      # Add a data table for displaying API response
-      DTOutput("apiTable")
+      )
     ),
     mainPanel(
       leafletOutput("map", height = "600px"),
-      htmlOutput("areaName"),
-      # Add a data table for displaying area data
-      DTOutput("areaTable")
+      htmlOutput("areaName")
     )
   )
 )
@@ -99,13 +94,6 @@ server <- function(input, output) {
     }
   })
   
-  output$apiTable <- renderDT({
-    # Display API response in a data table
-    if (!is.null(result())) {
-      datatable(result()$api_response, options = list(lengthMenu = c(5, 10, 15), pageLength = 5))
-    }
-  })
-  
   output$map <- renderLeaflet({
     if (!is.null(result())) {
       # Extract latitude and longitude values
@@ -116,32 +104,6 @@ server <- function(input, output) {
         addProviderTiles("OpenStreetMap.Mapnik") %>%
         setView(lng = 172, lat = -42, zoom = 5) %>% 
         addMarkers(lng = lon, lat = lat, popup = "Selected Location")
-    }
-  })
-  
-  output$areaTable <- renderDT({
-    # Display area data in a data table
-    if (!is.null(result())) {
-      # Update the area name
-      point_sf <- st_sfc(st_point(c(result()$data$longitude, result()$data$latitude)), crs = 4326)
-      intersection <- st_intersection(geojson, st_transform(point_sf, st_crs(geojson)))
-      
-      if (!is.null(intersection) && nrow(intersection) > 0) {
-        area_name <- na.omit(intersection$impb)
-        if (length(area_name) > 0) {
-          area_data <- data.frame(IMPB = unique(area_name))
-          datatable(area_data)
-        } else {
-          # Return an empty data table if no area name is found
-          datatable(NULL)
-        }
-      } else {
-        # Return an empty data table if no intersection is found
-        datatable(NULL)
-      }
-    } else {
-      # Return an empty data table if no result is available
-      datatable(NULL)
     }
   })
   
